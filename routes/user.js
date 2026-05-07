@@ -3,7 +3,7 @@ const userRouter = Router();
 const { User } = require("../db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const authMiddleware = require('./middlewares/authmiddleware') ;
+const authMiddleware = require('./middlewares/authuser') ;
 
 const saltRounds = 10; // higher = more secure but slower
 
