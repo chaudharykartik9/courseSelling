@@ -2,6 +2,7 @@ const { Router } = require("express");
 const userRouter = Router();
 const { User } = require("../db");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const authMiddleware = require('./middlewares/authmiddleware') ;
 
 const saltRounds = 10; // higher = more secure but slower
@@ -37,7 +38,7 @@ userRouter.post("/signup", async (req, res) => {
 });
 
 userRouter.post("/signin", async (req, res) => {
-  const { email, password, firstname, lastname } = req.body;
+  const { email, password } = req.body;
 
   try {
     const userexsit = await User.findOne({
@@ -59,7 +60,7 @@ userRouter.post("/signin", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id, email: user.email },
+      { id: userexsit._id, email: userexsit.email },
       process.env.JWT_SECRET_user, // move to .env later
       { expiresIn: "1h" },
     );
