@@ -9,10 +9,12 @@ require('dotenv').config();
 const { userRouter } = require('./routes/user') ;
 const {courseRouter} = require('./routes/course');
 const{adminRouter} = require('./routes/admin') ;
+const cookieParser = require("cookie-parser");
+const app = express() ;
+app.use(cookieParser());
 
 
 const port = 3000 ;
-const app = express() ;
 app.use(express.json());
 
 

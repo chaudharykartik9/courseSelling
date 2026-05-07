@@ -4,7 +4,11 @@ const {Admin, Course} = require("../db") ;
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const authMiddleware = require('./middlewares/authadmin')
+const authMiddleware = require('./middlewares/authadmin');
+// const cookieParser = require("cookie-parser");
+
+// app.use(cookieParser());
+
 
 //adminRouter.use(adminMiddleware) ;
 
