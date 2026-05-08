@@ -1,33 +1,47 @@
 const { Router } = require("express");
 const userRouter = Router();
-const { User } = require("../db");
+
+const { User, Course, Purchase } = require("../db");
+
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const authMiddleware = require('./middlewares/authuser') ;
 
-const saltRounds = 10; // higher = more secure but slower
+const authMiddleware = require("./middlewares/authuser");
 
+const saltRounds = 10;
+
+
+// =========================
+// USER SIGNUP
+// =========================
 userRouter.post("/signup", async (req, res) => {
   const { email, password, firstname, lastname } = req.body;
+
   try {
     const existingUser = await User.findOne({
       email: email,
     });
 
     if (existingUser) {
-      res.status(403).json({
-        message: "User with this username already exists",
+      return res.status(403).json({
+        message: "User with this email already exists",
       });
-      return;
     }
-    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const hashedPassword = await bcrypt.hash(
+      password,
+      saltRounds
+    );
+
     const newUser = await User.create({
-      email: email,
+      email,
       password: hashedPassword,
-      firstname: firstname,
-      lastname: lastname,
+      firstname,
+      lastname,
     });
+
     res.json({
+      message: "Signup successful",
       id: newUser._id,
     });
   } catch (error) {
@@ -37,21 +51,28 @@ userRouter.post("/signup", async (req, res) => {
   }
 });
 
+
+// =========================
+// USER SIGNIN
+// =========================
 userRouter.post("/signin", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const userexsit = await User.findOne({
-      email: email,
+    const userExist = await User.findOne({
+      email,
     });
 
-    if (!userexsit) {
+    if (!userExist) {
       return res.status(401).json({
         message: "Invalid email or password",
       });
     }
 
-    const isMatch = await bcrypt.compare(password, userexsit.password);
+    const isMatch = await bcrypt.compare(
+      password,
+      userExist.password
+    );
 
     if (!isMatch) {
       return res.status(401).json({
@@ -60,21 +81,26 @@ userRouter.post("/signin", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: userexsit._id, email: userexsit.email },
-      process.env.JWT_SECRET_user, // move to .env later
-      { expiresIn: "1h" },
+      {
+        id: userExist._id,
+        email: userExist.email,
+      },
+      process.env.JWT_SECRET_user,
+      {
+        expiresIn: "1h",
+      }
     );
 
-    // 🍪 Send token in httpOnly cookie
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false, // set true in production (HTTPS)
+      secure: false,
       sameSite: "lax",
     });
 
     res.json({
       message: "Signin successful",
-      id: userexsit._id,
+      token,
+      id: userExist._id,
     });
   } catch (error) {
     console.log(error);
@@ -85,11 +111,109 @@ userRouter.post("/signin", async (req, res) => {
   }
 });
 
-userRouter.get("/purchases", authMiddleware , async(req, res) => {
-  const user = await User.findById(req.userId);
-  
+
+// =========================
+// PREVIEW ALL COURSES
+// PUBLIC ROUTE
+// =========================
+userRouter.get("/preview", async (req, res) => {
+  try {
+    const courses = await Course.find({});
+
+    res.json({
+      courses,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Something went wrong",
+    });
+  }
 });
 
+
+// =========================
+// PURCHASE COURSE
+// =========================
+userRouter.post("/purchase", authMiddleware, async (req, res) => {
+  const userId = req.userId;
+
+  const { courseId } = req.body;
+
+  try {
+    // check if course exists
+    const course = await Course.findById(courseId);
+
+    if (!course) {
+      return res.status(404).json({
+        message: "Course not found",
+      });
+    }
+
+    // prevent duplicate purchase
+    const alreadyPurchased = await Purchase.findOne({
+      userId,
+      courseId,
+    });
+
+    if (alreadyPurchased) {
+      return res.status(400).json({
+        message: "Course already purchased",
+      });
+    }
+
+    // create purchase
+    await Purchase.create({
+      userId,
+      courseId,
+    });
+
+    res.json({
+      message: "Course purchased successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Something went wrong",
+    });
+  }
+});
+
+
+// =========================
+// MY PURCHASED COURSES
+// =========================
+userRouter.get(
+  "/purchases",
+  authMiddleware,
+  async (req, res) => {
+    try {
+      // find all purchases
+      const purchases = await Purchase.find({
+        userId: req.userId,
+      });
+
+      // extract course ids
+      const courseIds = purchases.map(
+        (purchase) => purchase.courseId
+      );
+
+      // get courses
+      const coursesData = await Course.find({
+        _id: {
+          $in: courseIds,
+        },
+      });
+
+      res.json({
+        purchasedCourses: coursesData,
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: "Something went wrong",
+      });
+    }
+  }
+);
+
 module.exports = {
-  userRouter: userRouter,
+  userRouter,
 };
