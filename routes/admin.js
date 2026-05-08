@@ -5,12 +5,7 @@ const {Admin, Course} = require("../db") ;
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const authMiddleware = require('./middlewares/authadmin');
-// const cookieParser = require("cookie-parser");
 
-// app.use(cookieParser());
-
-
-//adminRouter.use(adminMiddleware) ;
 
 adminRouter.post('/signup', async(req, res)=>{
       const { email, password, firstname, lastname } = req.body;
@@ -114,9 +109,28 @@ adminRouter.post('/createcourse' , authMiddleware, async(req, res)=>{
 
 });
 
-adminRouter.put('/createcourse', (req, res)=>{
-     res.json({ message: "Admin signed up" });
+adminRouter.put('/createcourse', authMiddleware, async (req, res) => {
+  const adminid = req.adminId;
 
+  const { title, description, price, imageUrl, courseId } = req.body;
+
+  const updatecourse = await Course.updateOne(
+    {
+      _id: courseId,
+      creatorId: adminid,
+    },
+    {
+      title,
+      description,
+      price,
+      imageUrl,
+    }
+  );
+
+  res.json({
+    message: "course updated",
+    updatecourse,
+  });
 });
 
 adminRouter.get('/courses', (req, res)=>{f 
